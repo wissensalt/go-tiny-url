@@ -1,0 +1,11 @@
+version: "3.8"
+services:
+  db:
+    image: postgres:14-alpine
+    container_name: go_tiny_url_db
+    ports:
+      - "5433:5432"
+    environment:
+      - 'POSTGRES_DB=go_tiny_url_db'
+      - 'POSTGRES_USER=postgres'
+      - 'POSTGRES_PASSWORD=pgadmin'

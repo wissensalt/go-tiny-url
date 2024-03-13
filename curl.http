@@ -1,0 +1,23 @@
+GET http://localhost:8080/
+Accept: application/json
+
+###
+
+GET http://localhost:8080/tiny-urls
+Accept: application/json
+
+###
+
+POST http://localhost:8080/tiny-urls
+Content-Type: application/json
+
+{
+  "originUrl": "https://www.google.com/"
+}
+
+###
+
+GET http://localhost:8080/tiny-urls/xzwfhx4
+Accept: application/json
+
+###
