@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"math/rand"
 )
 
@@ -48,26 +49,45 @@ func (u UrlRepositoryImpl) GetUrls() []Url {
 }
 
 func (u UrlRepositoryImpl) Shorten(originUrl string) (Url, error) {
-	query := "SELECT * FROM url WHERE origin_url=$1"
-	r := u.DB.QueryRow(query, originUrl)
-	var url Url
-	err := r.Scan(&url.Id, &url.Code, &url.OriginUrl)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return url, err
-	} else {
-		code := generateRandomString(7)
-		query = "INSERT INTO url(code, origin_url) VALUES ($1, $2)"
-		_, err := u.DB.Exec(query, code, originUrl)
-		if err != nil {
-			return url, err
-		}
-
-		return Url{
-			Id:        0,
-			Code:      code,
-			OriginUrl: originUrl,
-		}, nil
+	query := "INSERT INTO url(code, origin_url) VALUES ($1, $2) RETURNING id"
+	tx, err := u.DB.Begin()
+	if err != nil {
+		fmt.Println("Failed to start transaction")
+		return Url{}, err
 	}
+
+	stmt, err := tx.Prepare(query)
+	if err != nil {
+		fmt.Println("Failed to create statement", err.Error())
+		return Url{}, err
+	}
+	defer func(stmt *sql.Stmt) {
+		err := stmt.Close()
+		if err != nil {
+			fmt.Println("Failed to close statement", err.Error())
+		}
+	}(stmt)
+
+	var savedUrl Url
+	var urlId int
+	generatedCode := generateRandomString(7)
+	err = stmt.QueryRow(generatedCode, originUrl).Scan(&urlId)
+	if err != nil {
+		fmt.Println("Failed to get last inserted id", err.Error())
+		return Url{}, err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		fmt.Println("Failed to commit transaction")
+		return Url{}, err
+	}
+
+	savedUrl.Id = urlId
+	savedUrl.Code = generatedCode
+	savedUrl.OriginUrl = originUrl
+
+	return savedUrl, nil
 }
 
 func (u UrlRepositoryImpl) FindByCode(code string) (Url, error) {
